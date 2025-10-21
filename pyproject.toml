@@ -1,31 +1,17 @@
-# Copyright (c) 2019-2024, NVIDIA CORPORATION.
-
-[tool.black]
-line-length = 79
-target-version = ["py310"]
-include = '\.py?$'
-force-exclude = '''
-/(
-    thirdparty |
-    \.eggs |
-    \.git |
-    \.hg |
-    \.mypy_cache |
-    \.tox |
-    \.venv |
-    _build |
-    buck-out |
-    build |
-    dist
-)/
-'''
-
-[tool.codespell]
-# note: pre-commit passes explicit lists of files here, which this skip file list doesn't override -
-# this is only to allow you to run codespell interactively
-skip = "./pyproject.toml,./.git,./cpp/build,.*egg-info.*,./.mypy_cache"
-# ignore short words, and typename parameters like OffsetT
-ignore-regex = "\\b(.{1,4}|[A-Z]\\w*T)\\b"
-ignore-words-list = "inout,unparseable"
-builtin = "clear"
-quiet-level = 3
+[project]
+name = "qu-spatial"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.12,<3.13"
+dependencies = [
+    "cudf-cu12>=25.4.0",
+    "cupy-cuda12x>=13.6.0",
+    "cuspatial-cu12>=25.4.0",
+    "geopandas>=1.1.1",
+    "numpy>=2.2.6",
+    "rmm-cu12>=25.4.0",
+]
+[tool.uv]
+# Limit lock resolution to the target host platform to avoid resolving for unused splits (e.g., aarch64)
+environments = ["platform_system == 'Linux' and platform_machine == 'x86_64'"]

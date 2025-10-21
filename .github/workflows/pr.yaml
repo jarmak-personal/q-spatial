@@ -12,86 +12,19 @@ concurrency:
 jobs:
   pr-builder:
     needs:
-      - check-nightly-ci
-      - changed-files
       - checks
-      - conda-cpp-build
-      - conda-cpp-checks
-      - conda-cpp-tests
-      - conda-python-build
-      - conda-python-tests
-      - conda-notebook-tests
-      - docs-build
       - wheel-build-cuspatial
       - wheel-build-libcuspatial
       - wheel-tests-cuspatial
       - wheel-build-cuproj
       - wheel-tests-cuproj
-      - devcontainer
-      - telemetry-setup
     secrets: inherit
     uses: rapidsai/shared-workflows/.github/workflows/pr-builder.yaml@branch-25.04
     if: always()
     with:
       needs: ${{ toJSON(needs) }}
-  telemetry-setup:
-    runs-on: ubuntu-latest
-    continue-on-error: true
-    env:
-      OTEL_SERVICE_NAME: "pr-cuspatial"
-    steps:
-      - name: Telemetry setup
-        # This gate is here and not at the job level because we need the job to not be skipped,
-        # since other jobs depend on it.
-        if: ${{ vars.TELEMETRY_ENABLED == 'true' }}
-        uses: rapidsai/shared-actions/telemetry-dispatch-stash-base-env-vars@main
-  check-nightly-ci:
-    # Switch to ubuntu-latest once it defaults to a version of Ubuntu that
-    # provides at least Python 3.11 (see
-    # https://docs.python.org/3/library/datetime.html#datetime.date.fromisoformat)
-    runs-on: ubuntu-24.04
-    needs: telemetry-setup
-    env:
-      RAPIDS_GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-    steps:
-      - name: Check if nightly CI is passing
-        uses: rapidsai/shared-actions/check_nightly_success/dispatch@main
-        with:
-          repo: cuspatial
-  changed-files:
-    secrets: inherit
-    needs: telemetry-setup
-    uses: rapidsai/shared-workflows/.github/workflows/changed-files.yaml@branch-25.04
-    with:
-      files_yaml: |
-        test_cpp:
-          - '**'
-          - '!.devcontainer/**'
-          - '!.pre-commit-config.yaml'
-          - '!CONTRIBUTING.md'
-          - '!README.md'
-          - '!docs/**'
-          - '!java/**'
-          - '!notebooks/**'
-          - '!python/**'
-        test_notebooks:
-          - '**'
-          - '!.devcontainer/**'
-          - '!.pre-commit-config.yaml'
-          - '!CONTRIBUTING.md'
-          - '!README.md'
-        test_python:
-          - '**'
-          - '!.devcontainer/**'
-          - '!.pre-commit-config.yaml'
-          - '!CONTRIBUTING.md'
-          - '!README.md'
-          - '!docs/**'
-          - '!java/**'
-          - '!notebooks/**'
   checks:
     secrets: inherit
-    needs: telemetry-setup
     uses: rapidsai/shared-workflows/.github/workflows/checks.yaml@branch-25.04
     with:
       enable_check_generated_files: false
@@ -140,16 +73,6 @@ jobs:
       arch: "amd64"
       container_image: "rapidsai/ci-conda:latest"
       run_script: "ci/test_notebooks.sh"
-  docs-build:
-    needs: conda-python-build
-    secrets: inherit
-    uses: rapidsai/shared-workflows/.github/workflows/custom-job.yaml@branch-25.04
-    with:
-      build_type: pull-request
-      node_type: "gpu-l4-latest-1"
-      arch: "amd64"
-      container_image: "rapidsai/ci-conda:latest"
-      run_script: "ci/build_docs.sh"
   wheel-build-libcuspatial:
     needs: checks
     secrets: inherit
@@ -189,23 +112,3 @@ jobs:
     with:
       build_type: pull-request
       script: ci/test_wheel_cuproj.sh
-  devcontainer:
-    secrets: inherit
-    uses: rapidsai/shared-workflows/.github/workflows/build-in-devcontainer.yaml@branch-25.04
-    with:
-      node_type: "cpu32"
-      arch: '["amd64"]'
-      cuda: '["12.8"]'
-      build_command: |
-        sccache -z;
-        build-all -DBUILD_TESTS=ON -DBUILD_BENCHMARKS=ON --verbose;
-        sccache -s;
-  telemetry-summarize:
-    # This job must use a self-hosted runner to record telemetry traces.
-    runs-on: linux-amd64-cpu4
-    needs: pr-builder
-    if: ${{ vars.TELEMETRY_ENABLED == 'true' && !cancelled() }}
-    continue-on-error: true
-    steps:
-      - name: Telemetry summarize
-        uses: rapidsai/shared-actions/telemetry-dispatch-summarize@main

@@ -17,31 +17,6 @@ on:
         default: nightly
 
 jobs:
-  conda-cpp-checks:
-    secrets: inherit
-    uses: rapidsai/shared-workflows/.github/workflows/conda-cpp-post-build-checks.yaml@branch-25.04
-    with:
-      build_type: ${{ inputs.build_type }}
-      branch: ${{ inputs.branch }}
-      date: ${{ inputs.date }}
-      sha: ${{ inputs.sha }}
-      enable_check_symbols: true
-  conda-cpp-tests:
-    secrets: inherit
-    uses: rapidsai/shared-workflows/.github/workflows/conda-cpp-tests.yaml@branch-25.04
-    with:
-      build_type: ${{ inputs.build_type }}
-      branch: ${{ inputs.branch }}
-      date: ${{ inputs.date }}
-      sha: ${{ inputs.sha }}
-  conda-python-tests:
-    secrets: inherit
-    uses: rapidsai/shared-workflows/.github/workflows/conda-python-tests.yaml@branch-25.04
-    with:
-      build_type: ${{ inputs.build_type }}
-      branch: ${{ inputs.branch }}
-      date: ${{ inputs.date }}
-      sha: ${{ inputs.sha }}
   wheel-tests-cuspatial:
     secrets: inherit
     uses: rapidsai/shared-workflows/.github/workflows/wheels-test.yaml@branch-25.04
@@ -51,12 +26,3 @@ jobs:
       date: ${{ inputs.date }}
       sha: ${{ inputs.sha }}
       script: ci/test_wheel_cuspatial.sh
-  wheel-tests-cuproj:
-    secrets: inherit
-    uses: rapidsai/shared-workflows/.github/workflows/wheels-test.yaml@branch-25.04
-    with:
-      build_type: ${{ inputs.build_type }}
-      branch: ${{ inputs.branch }}
-      date: ${{ inputs.date }}
-      sha: ${{ inputs.sha }}
-      script: ci/test_wheel_cuproj.sh

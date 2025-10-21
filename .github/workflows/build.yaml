@@ -11,15 +11,7 @@ on:
       branch:
         required: true
         type: string
-      date:
-        required: true
-        type: string
-      sha:
-        required: true
-        type: string
-      build_type:
-        type: string
-        default: nightly
+
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}-${{ github.event_name }}
@@ -43,29 +35,6 @@ jobs:
       branch: ${{ inputs.branch }}
       date: ${{ inputs.date }}
       sha: ${{ inputs.sha }}
-  upload-conda:
-    needs: [cpp-build, python-build]
-    secrets: inherit
-    uses: rapidsai/shared-workflows/.github/workflows/conda-upload-packages.yaml@branch-25.04
-    with:
-      build_type: ${{ inputs.build_type || 'branch' }}
-      branch: ${{ inputs.branch }}
-      date: ${{ inputs.date }}
-      sha: ${{ inputs.sha }}
-  docs-build:
-    if: github.ref_type == 'branch'
-    needs: python-build
-    secrets: inherit
-    uses: rapidsai/shared-workflows/.github/workflows/custom-job.yaml@branch-25.04
-    with:
-      arch: "amd64"
-      branch: ${{ inputs.branch }}
-      build_type: ${{ inputs.build_type || 'branch' }}
-      container_image: "rapidsai/ci-conda:latest"
-      date: ${{ inputs.date }}
-      node_type: "gpu-l4-latest-1"
-      run_script: "ci/build_docs.sh"
-      sha: ${{ inputs.sha }}
   wheel-build-libcuspatial:
     secrets: inherit
     uses: rapidsai/shared-workflows/.github/workflows/wheels-build.yaml@branch-25.04
@@ -77,17 +46,6 @@ jobs:
       sha: ${{ inputs.sha }}
       date: ${{ inputs.date }}
       script: ci/build_wheel_libcuspatial.sh
-  wheel-publish-libcuspatial:
-    needs: wheel-build-libcuspatial
-    secrets: inherit
-    uses: rapidsai/shared-workflows/.github/workflows/wheels-publish.yaml@branch-25.04
-    with:
-      build_type: ${{ inputs.build_type || 'branch' }}
-      branch: ${{ inputs.branch }}
-      sha: ${{ inputs.sha }}
-      date: ${{ inputs.date }}
-      package-name: libcuspatial
-      package-type: cpp
   wheel-build-cuspatial:
     needs: wheel-build-libcuspatial
     secrets: inherit
@@ -98,34 +56,3 @@ jobs:
       sha: ${{ inputs.sha }}
       date: ${{ inputs.date }}
       script: ci/build_wheel_cuspatial.sh
-  wheel-publish-cuspatial:
-    needs: wheel-build-cuspatial
-    secrets: inherit
-    uses: rapidsai/shared-workflows/.github/workflows/wheels-publish.yaml@branch-25.04
-    with:
-      build_type: ${{ inputs.build_type || 'branch' }}
-      branch: ${{ inputs.branch }}
-      sha: ${{ inputs.sha }}
-      date: ${{ inputs.date }}
-      package-name: cuspatial
-      package-type: python
-  wheel-build-cuproj:
-    secrets: inherit
-    uses: rapidsai/shared-workflows/.github/workflows/wheels-build.yaml@branch-25.04
-    with:
-      build_type: ${{ inputs.build_type || 'branch' }}
-      branch: ${{ inputs.branch }}
-      sha: ${{ inputs.sha }}
-      date: ${{ inputs.date }}
-      script: ci/build_wheel_cuproj.sh
-  wheel-publish-cuproj:
-    needs: wheel-build-cuproj
-    secrets: inherit
-    uses: rapidsai/shared-workflows/.github/workflows/wheels-publish.yaml@branch-25.04
-    with:
-      build_type: ${{ inputs.build_type || 'branch' }}
-      branch: ${{ inputs.branch }}
-      sha: ${{ inputs.sha }}
-      date: ${{ inputs.date }}
-      package-name: cuproj
-      package-type: python
