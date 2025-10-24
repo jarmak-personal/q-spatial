@@ -1,0 +1,102 @@
+name: uv-build
+
+on:
+  push:
+    branches: [ main, de-rapids-ify ]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build-wheels:
+    runs-on: ubuntu-latest
+    # Use a CUDA-enabled container to allow linking against CUDA 12 wheels (no GPU required for linking)
+    container:
+      image: nvidia/cuda:12.9.1-devel-ubuntu22.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install system deps
+        run: |
+          apt-get update
+          DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+            curl git build-essential pkg-config python3 python3-venv python3-pip \
+            cmake ninja-build
+
+      - name: Install uv
+        run: |
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          echo "$HOME/.local/bin" >> $GITHUB_PATH
+
+      - name: Create venv
+        run: |
+          uv venv --python 3.12
+          . .venv/bin/activate
+          python -V
+
+      - name: Install build toolchain
+        run: |
+          . .venv/bin/activate
+          uv pip install "rapids-build-backend>=0.3,<0.4" "scikit-build-core[pyproject]>=0.10" \
+            "cython>=3.0" "cmake>=3.30" ninja build
+
+      - name: Add runtime deps (NVIDIA index)
+        run: |
+          . .venv/bin/activate
+          uv add --extra-index-url=https://pypi.nvidia.com \
+            cudf-cu12 cuspatial-cu12 rmm-cu12 cupy-cuda12x geopandas numpy
+
+      - name: Lock deps
+        run: |
+          . .venv/bin/activate
+          uv lock
+
+      - name: Build libcuspatial wheel
+        working-directory: python/libcuspatial
+        run: |
+          . ../../.venv/bin/activate
+          uv build
+
+      - name: Install libcuspatial wheel
+        run: |
+          . .venv/bin/activate
+          uv pip install python/libcuspatial/dist/libcuspatial-*.whl
+
+      - name: Build cuspatial wheel
+        working-directory: python/cuspatial
+        run: |
+          . ../../.venv/bin/activate
+          uv build
+
+      - name: Install validation tools
+        run: |
+          . .venv/bin/activate
+          uv pip install twine pydistcheck
+
+      - name: Validate wheels (pydistcheck + twine)
+        run: |
+          . .venv/bin/activate
+          python -m pydistcheck --inspect python/libcuspatial/dist/*.whl
+          python -m pydistcheck --inspect python/cuspatial/dist/*.whl
+          twine check --strict python/libcuspatial/dist/*.whl python/cuspatial/dist/*.whl
+
+      - name: Smoke test import
+        run: |
+          . .venv/bin/activate
+          uv pip install python/libcuspatial/dist/*.whl python/cuspatial/dist/*.whl
+          python - <<'PY'
+          import sys
+          print('Python:', sys.version)
+          import libcuspatial
+          print('libcuspatial imported')
+          import cuspatial
+          print('cuspatial imported')
+          PY
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: wheels
+          path: |
+            python/libcuspatial/dist/*.whl
+            python/cuspatial/dist/*.whl
